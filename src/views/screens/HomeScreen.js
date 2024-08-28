@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {
   Dimensions,
   SafeAreaView,
@@ -8,15 +8,20 @@ import {
   TouchableOpacity,
   View,
   Image,
+  Animated,
+  TextInput,
+  FlatList,
 } from 'react-native';
-
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import COLORS from '../../consts/colors';
 import hotels from '../../consts/hotels';
-import {FlatList, TextInput} from 'react-native-gesture-handler';
+import {transformer} from '../../../metro.config';
+
 const {width} = Dimensions.get('screen');
 const cardWidth = width / 1.8;
+
 const HomeScreen = ({navigation}) => {
+  const scrollX = useRef(new Animated.Value(0)).current; // Correct usage of useRef
   const categories = ['All', 'Popular', 'Top Rated', 'Featured', 'Luxury'];
   const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
 
@@ -57,12 +62,74 @@ const HomeScreen = ({navigation}) => {
   };
 
   const Card = ({hotel, index}) => {
+    const inputRange = [
+      (index - 1) * cardWidth,
+      index * cardWidth,
+      (index + 1) * cardWidth,
+    ];
+    const opacity = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.7, 0, 0.7],
+    });
+    const scale = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.8, 1, 0.8],
+    });
+
     return (
-      <View style={{...styles.card}}>
+      <Animated.View style={{...styles.card, transform: [{scale}]}}>
+        <Animated.View style={{...styles.cardOverLay, opacity}} />
+        <View style={{...styles.priceTag}}>
+          <Text
+            style={{
+              color: COLORS.white,
+              fontSize: 20,
+              fontWeight: 'bold',
+            }}>
+            ${hotel.price}
+          </Text>
+        </View>
         <Image source={hotel.image} style={styles.cardImage} />
+        <View style={styles.cardDetails}>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <View>
+              <Text style={{fontSize: 17, fontWeight: 'bold'}}>
+                {hotel.name}
+              </Text>
+              <Text style={{fontSize: 12, color: COLORS.grey}}>
+                {hotel.location}
+              </Text>
+            </View>
+            <Icon name="bookmark-border" size={26} color={COLORS.primary} />
+          </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginTop: 10,
+            }}>
+            <View style={{flexDirection: 'row'}}>
+              <Icon name="star" size={15} color={COLORS.orange} />
+              <Icon name="star" size={15} color={COLORS.orange} />
+              <Icon name="star" size={15} color={COLORS.orange} />
+              <Icon name="star" size={15} color={COLORS.orange} />
+              <Icon name="star" size={15} color={COLORS.grey} />
+            </View>
+            <Text style={{fontSize: 10, color: COLORS.grey}}>365 reviews</Text>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  const TopHotelCard = ({hotels}) => {
+    return (
+      <View style={styles.topHotelCard}>
+        <Image style={styles.topHotelCardImage} source={hotel.image} />
       </View>
     );
   };
+
   return (
     <SafeAreaView style={{flex: 1, backgroundColor: COLORS.white}}>
       <View style={styles.header}>
@@ -71,7 +138,9 @@ const HomeScreen = ({navigation}) => {
             Find Your Hotel
           </Text>
           <View style={{flexDirection: 'row'}}>
-            <Text style={{fontSize: 30, fontWeight: 'bold'}}>in</Text>
+            <Text style={{fontSize: 30, fontWeight: 'bold', paddingRight: 10}}>
+              in
+            </Text>
             <Text
               style={{fontSize: 30, fontWeight: 'bold', color: COLORS.primary}}>
               India
@@ -90,33 +159,51 @@ const HomeScreen = ({navigation}) => {
         </View>
         <CategoryList />
         <View>
-          <FlatList
+          <Animated.FlatList
+            onScroll={Animated.event(
+              [{nativeEvent: {contentOffset: {x: scrollX}}}],
+              {useNativeDriver: true},
+            )}
             horizontal
             data={hotels}
-            contentContainerStyle={{paddingVertical: 30, paddingLeft: 20}}
+            contentContainerStyle={{
+              paddingVertical: 30,
+              paddingLeft: 20,
+              paddingRight: cardWidth / 2 - 40,
+            }}
             showsHorizontalScrollIndicator={false}
             renderItem={({item, index}) => <Card hotel={item} index={index} />}
+            totalinterval={cardWidth}
           />
         </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginHorizontal: 20,
+          }}>
+          <Text style={{fontWeight: 'bold', color: COLORS.grey}}>
+            Top hotels
+          </Text>
+          <Text style={{color: COLORS.grey}}>Show All</Text>
+        </View>
+        <FlatList
+          data={hotels}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingLeft: 20,
+            paddingBottom: 20,
+            marginTop: 30,
+          }}
+          renderItem={({item}) => <TopHotelCard hotel={item} />}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  // iconContainer: {
-  //   // color: 'black',
-  //   // justifyContent: 'center',
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  // },
-  // iconText: {
-  //   color: 'black',
-  //   fontWeight: 'bold',
-  //   marginLeft: 8,
-  //   fontSize: 18,
-  // },
-
   header: {
     marginTop: 20,
     flexDirection: 'row',
@@ -156,6 +243,49 @@ const styles = StyleSheet.create({
     width: '100%',
     borderTopLeftRadius: 15,
     borderTopRightRadius: 15,
+  },
+  priceTag: {
+    height: 60,
+    width: 80,
+    backgroundColor: COLORS.primary,
+    position: 'absolute',
+    zIndex: 1,
+    right: 0,
+    borderTopRightRadius: 15,
+    borderBottomLeftRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardDetails: {
+    height: 100,
+    width: '100%',
+    borderRadius: 15,
+    backgroundColor: COLORS.white,
+    position: 'absolute',
+    bottom: 0,
+    padding: 20,
+  },
+  cardOverLay: {
+    height: 200,
+    width: cardWidth,
+    borderRadius: 15,
+    backgroundColor: COLORS.white,
+    position: 'absolute',
+    zIndex: 100,
+  },
+  topHotelCard: {
+    height: 120,
+    width: 120,
+    backgroundColor: 'yellow',
+    elevation: 15,
+    marginHorizontal: 10,
+    borderRadius: 10,
+  },
+  topHotelCardImage: {
+    height: 80,
+    width: '100%',
+    borderTopRightRadius: 10,
+    borderTopLeftRadius: 10,
   },
 });
 
