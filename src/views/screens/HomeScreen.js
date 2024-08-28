@@ -21,11 +21,12 @@ const {width} = Dimensions.get('screen');
 const cardWidth = width / 1.8;
 
 const HomeScreen = ({navigation}) => {
-  const scrollX = useRef(new Animated.Value(0)).current; // Correct usage of useRef
+  const scrollX = useRef(new Animated.Value(0)).current;
   const categories = ['All', 'Popular', 'Top Rated', 'Featured', 'Luxury'];
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
 
-  const CategoryList = () => {
+  const CategoryList = navigation => {
     return (
       <View style={styles.categoryListContainer}>
         {categories.map((item, index) => (
@@ -77,55 +78,82 @@ const HomeScreen = ({navigation}) => {
     });
 
     return (
-      <Animated.View style={{...styles.card, transform: [{scale}]}}>
-        <Animated.View style={{...styles.cardOverLay, opacity}} />
-        <View style={{...styles.priceTag}}>
-          <Text
-            style={{
-              color: COLORS.white,
-              fontSize: 20,
-              fontWeight: 'bold',
-            }}>
-            ${hotel.price}
-          </Text>
-        </View>
-        <Image source={hotel.image} style={styles.cardImage} />
-        <View style={styles.cardDetails}>
-          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <View>
-              <Text style={{fontSize: 17, fontWeight: 'bold'}}>
-                {hotel.name}
-              </Text>
-              <Text style={{fontSize: 12, color: COLORS.grey}}>
-                {hotel.location}
+      <TouchableOpacity
+        disabled={activeCardIndex != index}
+        activeOpacity={1}
+        onPress={() => navigation.navigate('DetailsScreen', hotel)}>
+        <Animated.View style={{...styles.card, transform: [{scale}]}}>
+          <Animated.View style={{...styles.cardOverLay, opacity}} />
+          <View style={{...styles.priceTag}}>
+            <Text
+              style={{
+                color: COLORS.white,
+                fontSize: 20,
+                fontWeight: 'bold',
+              }}>
+              ${hotel.price}
+            </Text>
+          </View>
+          <Image source={hotel.image} style={styles.cardImage} />
+          <View style={styles.cardDetails}>
+            <View
+              style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <View>
+                <Text style={{fontSize: 17, fontWeight: 'bold'}}>
+                  {hotel.name}
+                </Text>
+                <Text style={{fontSize: 12, color: COLORS.grey}}>
+                  {hotel.location}
+                </Text>
+              </View>
+              <Icon name="bookmark-border" size={26} color={COLORS.primary} />
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginTop: 10,
+              }}>
+              <View style={{flexDirection: 'row'}}>
+                <Icon name="star" size={15} color={COLORS.orange} />
+                <Icon name="star" size={15} color={COLORS.orange} />
+                <Icon name="star" size={15} color={COLORS.orange} />
+                <Icon name="star" size={15} color={COLORS.orange} />
+                <Icon name="star" size={15} color={COLORS.grey} />
+              </View>
+              <Text style={{fontSize: 10, color: COLORS.grey}}>
+                365 reviews
               </Text>
             </View>
-            <Icon name="bookmark-border" size={26} color={COLORS.primary} />
           </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              marginTop: 10,
-            }}>
-            <View style={{flexDirection: 'row'}}>
-              <Icon name="star" size={15} color={COLORS.orange} />
-              <Icon name="star" size={15} color={COLORS.orange} />
-              <Icon name="star" size={15} color={COLORS.orange} />
-              <Icon name="star" size={15} color={COLORS.orange} />
-              <Icon name="star" size={15} color={COLORS.grey} />
-            </View>
-            <Text style={{fontSize: 10, color: COLORS.grey}}>365 reviews</Text>
-          </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </TouchableOpacity>
     );
   };
 
-  const TopHotelCard = ({hotels}) => {
+  const TopHotelCard = ({hotel}) => {
     return (
       <View style={styles.topHotelCard}>
+        <View
+          style={{
+            position: 'absolute',
+            top: 5,
+            right: 5,
+            zIndex: 1,
+            flexDirection: 'row',
+          }}>
+          <Icon name="star" size={15} color={COLORS.orange} />
+          <Text style={{fontSize: 12, fontWeight: 'bold', color: COLORS.white}}>
+            5.0
+          </Text>
+        </View>
         <Image style={styles.topHotelCardImage} source={hotel.image} />
+        <View style={{paddingVertical: 5, paddingHorizontal: 10}}>
+          <Text style={{fontSize: 10, fontWeight: 'bold'}}>{hotel.name}</Text>
+          <Text style={{fontSize: 7, color: COLORS.grey}}>
+            {hotel.location}
+          </Text>
+        </View>
       </View>
     );
   };
@@ -160,6 +188,14 @@ const HomeScreen = ({navigation}) => {
         <CategoryList />
         <View>
           <Animated.FlatList
+            onMomentumScrollEnd={e => {
+              // console.log(
+              //   Math.round(e.nativeEvent.contentOffset.x / cardWidth),
+              // );
+              setActiveCardIndex(
+                Math.round(e.nativeEvent.contentOffset.x / cardWidth),
+              );
+            }}
             onScroll={Animated.event(
               [{nativeEvent: {contentOffset: {x: scrollX}}}],
               {useNativeDriver: true},
@@ -276,7 +312,8 @@ const styles = StyleSheet.create({
   topHotelCard: {
     height: 120,
     width: 120,
-    backgroundColor: 'yellow',
+    // backgroundColor: 'yellow',
+    backgroundColor: COLORS.white,
     elevation: 15,
     marginHorizontal: 10,
     borderRadius: 10,
